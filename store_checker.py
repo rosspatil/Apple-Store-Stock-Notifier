@@ -369,7 +369,7 @@ class StoreChecker:
 
 if __name__ == "__main__":
     store_checker = StoreChecker()
-    # post_message_to_slack()
+    post_message_to_slack()
     while True:
         asyncio.run(store_checker.refresh())
         time.sleep(30)

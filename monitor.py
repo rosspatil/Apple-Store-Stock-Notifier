@@ -356,7 +356,8 @@ if __name__ == "__main__":
 
 
 def post_message_to_slack(message=None):
-    url = 'https://hooks.slack.com/services/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'
+    url = 'https://hooks.slack.com/services/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'
     myobj = {'text': 'bhai bhai @neo'}
     x = requests.post(url, json=myobj)
     print(x.text)
+    print("-------------------------------------------------------------------")
