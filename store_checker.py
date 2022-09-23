@@ -4,8 +4,9 @@ from __future__ import print_function, unicode_literals
 import json
 import time
 import logging
-from datetime import date, datetime
+from datetime import datetime
 from typing import Tuple
+from monitor import *
 
 import crayons
 import minibar
@@ -13,8 +14,6 @@ import requests
 
 from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
 from http_request_randomizer.requests.errors.ProxyListException import ProxyListException
-
-from utils import send
 
 
 class Configuration:
@@ -54,10 +53,9 @@ class StoreChecker:
         "https://retail-pz.cdn-apple.com/product-zone-prod/availability/{0}/{1}/availability.json"
     )
 
-    def __init__(self, username, filename="config.json", randomize_proxies=False):
+    def __init__(self, filename="config.json", randomize_proxies=False):
         """Initialize the configuration for checking store(s) for stock."""
 
-        self.username = username
         self.configuration = Configuration(filename)
         self.stores_list_with_stock = {}
         self.base_url = "https://www.apple.com/"
@@ -104,10 +102,9 @@ class StoreChecker:
             return len(self.req_proxy.get_proxy_list())
         return 0
 
-    async def refresh(self, client, verbose=True):
+    async def refresh(self,  verbose=True):
         """Refresh information about the stock that is available on the Apple website, returns whether it is available"""
         start_time = time.perf_counter()
-        self.telegram_client = client
 
         # only look up the devices once, assuming this only needs to happen once per session
         if len(self.device_list) == 0:
@@ -150,9 +147,7 @@ class StoreChecker:
         message = ""
 
         def getlink(storePickupProductTitle):
-            link = "https://www.apple.com/shop/buy-iphone/iphone-13"
-            if "Pro" in storePickupProductTitle:
-                link += "-pro"
+            link = "https://www.apple.com/shop/buy-iphone/iphone-14-pro"
             return link
 
         for store in stores:
@@ -201,7 +196,7 @@ class StoreChecker:
         # Play the sound if phone is available.
         if stock_available:
             # immediately send a message!
-            await send(self.telegram_client, message)
+            post_message_to_slack(message)
             if verbose:
                 print("\n{}".format(crayons.green(
                     "Current Status - Stock is Available")))
@@ -222,7 +217,7 @@ class StoreChecker:
         if not not self.configuration.appointment_stores:
             slots_found, message = await self.get_store_availability()
             if slots_found is True:
-                await send(self.telegram_client, message)
+                post_message_to_slack(message)
 
         return stock_available, current_datetime, processing_time
 
@@ -243,7 +238,7 @@ class StoreChecker:
         if product_locator_response.status_code != 200 or product_locator_response.json() is None:
             print("----> HERE" + str(device_list))
             return []
-
+        print(product_locator_response.json())
         try:
             product_list = (
                 product_locator_response.json()
@@ -252,6 +247,7 @@ class StoreChecker:
                 .get("productLocatorMeta")
                 .get("products")
             )
+            print("-----")
             # Take out the product list and extract only the useful
             # information.
             for product in product_list:
@@ -351,11 +347,13 @@ class StoreChecker:
         max_proxy_attempts = 1
         if self.randomize_proxies is False or proxy_retry_count >= max_proxy_attempts:
             if self.randomize_proxies is True:
-                print(crayons.red(f"  randomized proxies failed {max_proxy_attempts} times, falling back to a non-proxied request. If this happens often, consider disabling randomized proxies."))
+                print(crayons.red(
+                    f"  randomized proxies failed {max_proxy_attempts} times, falling back to a non-proxied request. If this happens often, consider disabling randomized proxies."))
             return requests.get(url)
         else:
             try:
-                response = self.req_proxy.generate_proxied_request(url, req_timeout=30)
+                response = self.req_proxy.generate_proxied_request(
+                    url, req_timeout=30)
                 if response is not None and isinstance(response, requests.Response):
                     self.count_randomized_proxy_success += 1
                     return response
@@ -364,11 +362,14 @@ class StoreChecker:
             except ProxyListException:
                 message = f"Proxy list has been depleted, refreshing the proxy list..."
                 print(message)
-                await send(self.telegram_client, message)
+                post_message_to_slack()
                 self.refresh_proxies()
                 return await self.get_request(url)
 
 
 if __name__ == "__main__":
     store_checker = StoreChecker()
-    store_checker.refresh()
+    # post_message_to_slack()
+    while True:
+        asyncio.run(store_checker.refresh())
+        time.sleep(30)

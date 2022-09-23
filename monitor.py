@@ -5,18 +5,17 @@ from __future__ import print_function, unicode_literals
 import os
 import time
 import asyncio
+import requests
 from requests.exceptions import ConnectionError
 from copy import deepcopy
 from math import ceil
-from datetime import datetime
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 # imports for Telegram Notifications
-from telethon import TelegramClient, events, types, errors
+from telethon import events, types, errors
 
-from utils import send, reboot_pi, get_ip, past_time_formatter
+from utils import reboot_pi, get_ip, past_time_formatter
 from store_checker import StoreChecker
 from parameters import username, api_id, api_hash, bot_token, session_name, polling_interval_seconds, report_after_n_counts, config_path, data_path, log_path, randomize_proxies
 
@@ -54,8 +53,12 @@ class Monitor:
         self.bot_token = bot_token
         self.session_name = session_name
 
+        slack_token = 'xoxb-my-bot-token'
+        client = WebClient(token=slack_token)
+
         # creating a Telegram session and assigning it to a variable client
-        client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+        # client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+
         client.parse_mode = 'html'
         client.start(bot_token=self.bot_token)
 
@@ -72,7 +75,8 @@ class Monitor:
 
         # initializing the store checker
         print("Apple Store Monitoring\n")
-        self.store_checker = StoreChecker(username, randomize_proxies=randomize_proxies)
+        self.store_checker = StoreChecker(
+            username, randomize_proxies=randomize_proxies)
 
         # registering Telegram responses to the requests ((?i) makes it case insensitive)
         # status handler
@@ -112,7 +116,7 @@ class Monitor:
             self.save_df()
             async with client.action(username, 'document') as action:
                 await client.send_file(username, 'data.csv', progress_callback=action.progress, caption="Here's the data file!")
-        
+
         # getlog handler
         @client.on(events.NewMessage(pattern='(?i)/getlog'))
         async def handler(event):
@@ -247,7 +251,8 @@ class Monitor:
                     await send(client, f"Processing took longer ({round(processing_time, 3)} seconds) than the set polling interval ({polling_interval_seconds} seconds). \nSkipping {skips} polling{'s' if skips != 1 else ''}. \nIf you get this message often, disable randomized proxies or increase the polling interval and reboot.")
                     count += skips
                     additional_processing_time = time.perf_counter() - additional_start_time
-                    sleep_time = (polling_interval_seconds - (deficit % polling_interval_seconds)) - additional_processing_time
+                    sleep_time = (polling_interval_seconds - (deficit %
+                                                              polling_interval_seconds)) - additional_processing_time
 
                 # wait for the next polling
                 sleep_time = max(0, sleep_time)
@@ -348,3 +353,10 @@ class Monitor:
 
 if __name__ == "__main__":
     monitor = Monitor()
+
+
+def post_message_to_slack(message=None):
+    url = 'https://hooks.slack.com/services/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'
+    myobj = {'text': 'bhai bhai @neo'}
+    x = requests.post(url, json=myobj)
+    print(x.text)

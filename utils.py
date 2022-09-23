@@ -1,9 +1,7 @@
 import socket
-import asyncio
 from math import floor
-from requests.exceptions import ConnectionError
+from monitor import *
 
-from parameters import username
 
 """ Utilities file, these are functions that are supposed to be very low-level, not requiring either the StoreChecker or Monitor object references """
 
@@ -14,19 +12,7 @@ def reboot_pi():
     import subprocess
     subprocess.Popen(['sudo', 'reboot'])
 
-async def send(client, message: str, retry_count=0):
-    """ Send a Telegram message """
-    try:
-        await client.send_message(username, message)
-    except ConnectionError as error:
-        if retry_count > 5:
-            print(f"Retried 5 times, auto-rebooting now...")
-            reboot_pi()
-        backoff_time = 10
-        print(f"ConnectionError on sending Telgram message, waiting {backoff_time} seconds to try again. Error: {error}")
-        await asyncio.sleep(backoff_time)
-        await send(client, message, retry_count+1)
-    
+
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -38,6 +24,7 @@ def get_ip():
     finally:
         s.close()
     return IP
+
 
 def past_time_formatter(count, polling_interval_seconds):
     past_seconds = count * polling_interval_seconds

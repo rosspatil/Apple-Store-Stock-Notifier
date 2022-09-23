@@ -1,8 +1,13 @@
 {
-  "country_code": "us",
-  "device_family": "iphone_13_pro",
-  "zip_code": "63117",
-  "models": ["MLTT3LL/A"],
-  "carriers": ["UNLOCKED/US"],
-  "stores" : ["R114"]
+  "country_code": "de",
+  "device_family": "iphone_14_pro",
+  "zip_code": "10243",
+  "models": [
+    "MQ0G3ZD/A"
+  ],
+  "carriers": [],
+  "stores": [
+    "R443",
+    "R358"
+  ]
 }
